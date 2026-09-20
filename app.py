@@ -1,8 +1,24 @@
 import os
+import platform
 import streamlit as st
 import matplotlib.pyplot as plt
-import winsound
-from pyaxidraw import axidraw
+
+# --- CROSS-PLATFORM AUDIO FALLBACK ---
+try:
+    import winsound
+    def play_beep(freq=1200, duration=300):
+        winsound.Beep(freq, duration)
+except ImportError:
+    def play_beep(freq=1200, duration=300):
+        # Fallback for Linux / Render environments
+        print("\a")
+
+# --- AXI-DRAW IMPORT SAFEGUARD ---
+try:
+    from pyaxidraw import axidraw
+    AXIDRAW_AVAILABLE = True
+except ImportError:
+    AXIDRAW_AVAILABLE = False
 
 st.set_page_config(page_title="EasyDraw Controller", page_icon="🖊️", layout="centered")
 
@@ -54,19 +70,25 @@ if len(svg_files) > 0:
             svg_path = os.path.join(OUTPUT_DIR, current_file)
             st.write(f"🖊️ Plotting `{current_file}`...")
             
-            # Execute AxiDraw plotting
-            ad = axidraw.AxiDraw()
-            ad.plot_setup(svg_path)
-            ad.options.speed_pendown = 25
-            ad.options.speed_penup = 60
-            ad.options.pen_pos_down = 30
-            ad.options.pen_pos_up = 60
-            ad.plot_run()
+            # Execute AxiDraw plotting if driver is installed and hardware is connected
+            if AXIDRAW_AVAILABLE:
+                try:
+                    ad = axidraw.AxiDraw()
+                    ad.plot_setup(svg_path)
+                    ad.options.speed_pendown = 25
+                    ad.options.speed_penup = 60
+                    ad.options.pen_pos_down = 30
+                    ad.options.pen_pos_up = 60
+                    ad.plot_run()
+                except Exception as e:
+                    st.warning(f"Plotter connection skipped or failed: {e}")
+            else:
+                st.info("Simulated plot run (AxiDraw driver not available in cloud context).")
 
-            # Completion Chime
-            winsound.Beep(1200, 300)
-            winsound.Beep(1200, 300)
-            winsound.Beep(1200, 300)
+            # Completion Chime (Cross-platform)
+            play_beep(1200, 300)
+            play_beep(1200, 300)
+            play_beep(1200, 300)
             
             st.success(f"🔔 Finished plotting Page {current_idx + 1}!")
             st.session_state.current_page_idx += 1
